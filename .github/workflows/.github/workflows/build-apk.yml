@@ -1,0 +1,70 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Capacitor CLI globally
+        run: npm install -g @capacitor/cli
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Copy custom app icons
+        run: |
+          cp -rf android-icons/mipmap-mdpi/*    android/app/src/main/res/mipmap-mdpi/
+          cp -rf android-icons/mipmap-hdpi/*    android/app/src/main/res/mipmap-hdpi/
+          cp -rf android-icons/mipmap-xhdpi/*   android/app/src/main/res/mipmap-xhdpi/
+          cp -rf android-icons/mipmap-xxhdpi/*  android/app/src/main/res/mipmap-xxhdpi/
+          cp -rf android-icons/mipmap-xxxhdpi/* android/app/src/main/res/mipmap-xxxhdpi/
+
+      - name: Copy custom splash screens
+        run: |
+          mkdir -p android/app/src/main/res/drawable-port-mdpi
+          mkdir -p android/app/src/main/res/drawable-port-hdpi
+          mkdir -p android/app/src/main/res/drawable-port-xhdpi
+          mkdir -p android/app/src/main/res/drawable-port-xxhdpi
+          cp -f android-splash/drawable-port-mdpi/splash.png   android/app/src/main/res/drawable-port-mdpi/splash.png
+          cp -f android-splash/drawable-port-hdpi/splash.png   android/app/src/main/res/drawable-port-hdpi/splash.png
+          cp -f android-splash/drawable-port-xhdpi/splash.png  android/app/src/main/res/drawable-port-xhdpi/splash.png
+          cp -f android-splash/drawable-port-xxhdpi/splash.png android/app/src/main/res/drawable-port-xxhdpi/splash.png
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x android/gradlew
+
+      - name: Build APK (Debug)
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpha-ai-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
